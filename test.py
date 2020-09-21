@@ -13,7 +13,17 @@ train_loader, test_loader = data.get_data()
 print('loaded....')
 
 
-def test(model, device, test_loader, loss_function, log=False):
+@np.vectorize
+def map_q8_to_q3(q8):
+    if q8 == 3 or q8 == 4 or q8 == 5:
+        return 0
+    elif q8 == 1 or q8 == 2:
+        return 1
+    else:
+        return 2
+
+
+def test(model, device, test_loader, loss_function, log=False, mode='q8'):
     model.eval()
     test_loss = 0
     acc = 0
@@ -25,12 +35,22 @@ def test(model, device, test_loader, loss_function, log=False):
             data, target, seq_len = data.to(device), target.to(device), seq_len.to(device)
             out = model(data)
             test_loss += loss_function(out, target, seq_len).cpu().data.numpy()
-            a = accuracy(out, target, seq_len)
+            a = 0
             for ind in range(534):
-                ac = accuracy(out[ind:ind + 1, :, :], target[ind:ind + 1, :], seq_len[ind:ind + 1])
-                seq_str = ''.join([get_amino(x) for x in data[ind, :21, :seq_len[ind]].data.numpy().argmax(axis=0).tolist()])
-                pred = ''.join([get_structure_label(x) for x in out[ind, :seq_len[ind], :].data.numpy().argmax(axis=1).tolist()])
-                tar = ''.join([get_structure_label(x) for x in target[ind, :seq_len[ind]].data.numpy().tolist()])
+                if mode == 'q3':
+                    decoder = get_structure_label_q3
+                    d_target = map_q8_to_q3(target[ind, :seq_len[ind]].data.numpy())
+                    d_out = map_q8_to_q3(out[ind, :seq_len[ind], :].data.numpy().argmax(axis=1))
+                    ac = np.equal(d_target, d_out).sum() / d_out.shape[0]
+                else:
+                    decoder = get_structure_label
+                    d_target = target[ind, :seq_len[ind]].data.numpy()
+                    d_out = out[ind, :seq_len[ind], :].data.numpy().argmax(axis=1)
+                    ac = accuracy(out[ind:ind + 1, :, :], target[ind:ind + 1, :], seq_len[ind:ind + 1])
+                a += ac
+                seq_str = ''.join([get_amino(x) for x in out[ind, :seq_len[ind], :].data.numpy().argmax(axis=1).tolist()])
+                pred = ''.join([decoder(x) for x in d_out.tolist()])
+                tar = ''.join([decoder(x) for x in d_target.tolist()])
 
                 if log:
                     print(ind, 'Accuracy', ac, 'len', int(seq_len[ind]))
@@ -41,9 +61,15 @@ def test(model, device, test_loader, loss_function, log=False):
                                                                        out[ind, :seq_len[ind], :].data.numpy().argmax(axis=1)).tolist()
                                    ]))
                     print('')
+                possibility = out[ind, :seq_len[ind], :].data.numpy()
+                if mode != 'q8':
+                    possibility[:, 0] = possibility[:, 3:6].sum(1)
+                    possibility[:, 1] = possibility[:, 1:3].sum(1)
+                    possibility[:, 2] = possibility[:, 6:].sum(1) + possibility[:, 0]
+                    possibility = possibility[:, :3]
                 res.append({"id": ind, "acc": ac, "len": int(seq_len[ind]), 'seq': seq_str, 'pred': pred, 'target': tar,
-                            "possibility":  out[ind, :seq_len[ind], :].data.numpy().tolist()})
-
+                            "possibility":  possibility.tolist()})
+            a /= target.shape[0]
             acc += a
 
     test_loss /= length
@@ -75,7 +101,18 @@ def get_structure_label(num):
         return ' '
 
 
-def main(mod, log=True):
+def get_structure_label_q3(num):
+    dc = {
+        0: 'H', 1: 'E', 2: 'L'
+    }
+
+    if num in dc:
+        return dc[num]
+    else:
+        return ' '
+
+
+def main(mod, log=True, mode='q8'):
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
 
@@ -83,7 +120,7 @@ def main(mod, log=True):
     print(mod)
     model.load_state_dict(torch.load(mod))
     loss_function = CrossEntropy()
-    test_loss, acc, result_table = test(model, device, test_loader, loss_function, log)
+    test_loss, acc, result_table = test(model, device, test_loader, loss_function, log, mode)
     print('Test loss', test_loss)
     print('Accuracy', acc * 100, '%')
 

@@ -1,7 +1,7 @@
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from prepare_data import test_dest, train_dest
-from feature import feature_layer
+from feature import feature_apply
 
 
 class Data(Dataset):
@@ -35,8 +35,8 @@ class DataProvider:
         test_data = np.load(test_dest)
         x_test, y_test, seq_len_test = test_data['X'], test_data['y'], test_data['seq_len']
 
-        # x_train = feature_layer(x_train, seq_len_train).astype('float32')
-        # x_test = feature_layer(x_test, seq_len_test).astype('float32')
+        # x_train = feature_apply(x_train, seq_len_train).astype('float32')
+        # x_test = feature_apply(x_test, seq_len_test).astype('float32')
         #
         # print(x_train.dtype)
 

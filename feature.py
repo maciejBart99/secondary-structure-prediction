@@ -148,7 +148,7 @@ def get_amino(num):
         return ' '
 
 
-def feature_layer(inp: np.ndarray, seq_len: np.ndarray):
+def feature_apply(inp: np.ndarray, seq_len: np.ndarray):
     result = np.zeros((inp.shape[0], 7 + 42 + 2, inp.shape[2]))
     result[:, 9:30, :] = inp[:, 23:, :]
     result[:, 30:, :] = inp[:, :21, :]
