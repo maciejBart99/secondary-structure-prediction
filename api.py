@@ -1,6 +1,8 @@
 from flask import Flask, request, send_file
 from capt import explain_model, get_details
+from feature import feature_apply
 from test import main
+import numpy as np
 
 app = Flask('explain-model')
 
@@ -8,12 +10,14 @@ app = Flask('explain-model')
 classification_mode = 'q8'
 
 
-@app.route('/sequence/switch')
+@app.route('/sequence/switch', methods=['POST'])
 def switch():
     global classification_mode
     content = request.get_json()
     classification_mode = content['classification']
-    return None
+    return {
+        'status': 'ok'
+    }
 
 
 @app.route('/sequence/result')
@@ -31,11 +35,18 @@ def result():
 @app.route('/sequence/explain', methods=['POST'])
 def explain():
     content = request.get_json()
-    if 'seq' not in content or 'target' not in content or 'class' not in content or 'pos' not in content or 'path' not in content:
+    if 'seq' not in content or 'target' not in content or 'class' not in content or 'pos' not in content or 'path' not in content or 'encodeFeatures' not in content:
         return 'BAD REQUEST', 400
     else:
         data = explain_model(content['seq'], content['class'], content['target'], content['path'], content['boundaries'])
+        if content['encodeFeatures']:
+            sh = data.shape
+            data = data.reshape((1, sh[0], sh[1]))
+            print(data.shape)
+            data = feature_apply(data, np.array([sh[1]]))
+            data = data.reshape((14, sh[1]))
         target = []
+        data = data * 1000_000
         for i in range(data.shape[0]):
             for j in range(data.shape[1]):
                 target.append({
@@ -58,6 +69,11 @@ def serve():
 def det(details: int):
     data, central = get_details(details, int(request.args.get('pos')), int(request.args.get('boundaries')))
     result = []
+    if request.args.get('encodeFeatures') == 'true':
+        sh = data.shape
+        data = data.transpose((1,0)).reshape((1, sh[1], sh[0]))
+        data = feature_apply(data, np.array([sh[0]]))
+        data = data.reshape((14, sh[0])).transpose((1,0))
     for i in range(data.shape[0]):
         semi_res = []
         for j in range(data.shape[1]):

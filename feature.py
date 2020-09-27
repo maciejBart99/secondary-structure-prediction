@@ -2,7 +2,7 @@ import numpy as np
 
 
 def get_vaules(d):
-    return np.array(list(d.values())[:21])
+    return np.absolute(np.array(list(d.values())[:21]))
 
 
 electric_charge = get_vaules({
@@ -31,6 +31,8 @@ electric_charge = get_vaules({
   '_': 0.0
 })
 
+electric_charge /= np.absolute(electric_charge).mean()
+
 hydrophobicity_score = get_vaules({
   'A': 0.159,
   'C': 0.778,
@@ -56,6 +58,8 @@ hydrophobicity_score = get_vaules({
   '.': -0.078,
   '_': -0.078
 })
+
+hydrophobicity_score /= np.absolute(hydrophobicity_score).mean()
 
 polarity = get_vaules({
   'A': 0.0,
@@ -83,6 +87,8 @@ polarity = get_vaules({
   '_': 0.0
 })
 
+polarity /= polarity.mean()
+
 volume = get_vaules({
   'A': 92.0,
   'C': 106.0,
@@ -108,6 +114,8 @@ volume = get_vaules({
   '.': 1043.768,
   '_': 1043.768
 })
+
+volume /= volume.mean()
 
 solvent_accessibility = get_vaules({
   'S': [0.70, 0.20, 0.10],
@@ -135,6 +143,9 @@ solvent_accessibility = get_vaules({
   '_': [0.63, 0.25, 0.12]
 })
 
+solvent_accessibility[:, 0] /= solvent_accessibility[:, 0].mean()
+solvent_accessibility[:, 1] /= solvent_accessibility[:, 1].mean()
+solvent_accessibility[:, 2] /= solvent_accessibility[:, 2].mean()
 
 def get_amino(num):
     dc = {
@@ -149,20 +160,16 @@ def get_amino(num):
 
 
 def feature_apply(inp: np.ndarray, seq_len: np.ndarray):
-    result = np.zeros((inp.shape[0], 7 + 42 + 2, inp.shape[2]))
-    result[:, 9:30, :] = inp[:, 23:, :]
-    result[:, 30:, :] = inp[:, :21, :]
-    result[:, 7:9, :] = inp[:, 21:23, :]
-    # result[:, 0, :] = np.vectorize(lambda x: electric_charge[x])(inp[:, :21, :].argmax(1))
-    # result[:, 1, :] = np.vectorize(lambda x: hydrophobicity_score[x])(inp[:, :21, :].argmax(1))
-    # result[:, 2, :] = np.vectorize(lambda x: polarity[x])(inp[:, :21, :].argmax(1))
-    # result[:, 3, :] = np.vectorize(lambda x: volume[x])(inp[:, :21, :].argmax(1))
-    # result[:, 4, :] = np.vectorize(lambda x: solvent_accessibility[x, 0])(inp[:, :21, :].argmax(1))
-    # result[:, 5, :] = np.vectorize(lambda x: solvent_accessibility[x, 1])(inp[:, :21, :].argmax(1))
-    # result[:, 6, :] = np.vectorize(lambda x: solvent_accessibility[x, 2])(inp[:, :21, :].argmax(1))
+    result = np.zeros((inp.shape[0], 14, inp.shape[2]))
+    # result[:, 7, :] = np.vectorize(lambda x: electric_charge[x])(inp[:, :21, :].argmax(1))
+    # result[:, 8, :] = np.vectorize(lambda x: hydrophobicity_score[x])(inp[:, :21, :].argmax(1))
+    # result[:, 9, :] = np.vectorize(lambda x: polarity[x])(inp[:, :21, :].argmax(1))
+    # result[:, 10, :] = np.vectorize(lambda x: volume[x])(inp[:, :21, :].argmax(1))
+    # result[:, 11, :] = np.vectorize(lambda x: solvent_accessibility[x, 0])(inp[:, :21, :].argmax(1))
+    # result[:, 12, :] = np.vectorize(lambda x: solvent_accessibility[x, 1])(inp[:, :21, :].argmax(1))
+    # result[:, 13, :] = np.vectorize(lambda x: solvent_accessibility[x, 2])(inp[:, :21, :].argmax(1))
 
     for i in range(inp.shape[0]):
-        print(i)
         for j in range(int(seq_len[i])):
             result[i, 0, j] = np.dot(inp[i, 23:, j], electric_charge)
             result[i, 1, j] = np.dot(inp[i, 23:, j], hydrophobicity_score)
@@ -171,5 +178,12 @@ def feature_apply(inp: np.ndarray, seq_len: np.ndarray):
             result[i, 4, j] = np.dot(inp[i, 23:, j], solvent_accessibility[:, 0])
             result[i, 5, j] = np.dot(inp[i, 23:, j], solvent_accessibility[:, 1])
             result[i, 6, j] = np.dot(inp[i, 23:, j], solvent_accessibility[:, 2])
+            result[i, 7, j] = np.dot(inp[i, :21, j], electric_charge)
+            result[i, 8, j] = np.dot(inp[i, :21, j], hydrophobicity_score)
+            result[i, 9, j] = np.dot(inp[i, :21, j], polarity)
+            result[i, 10, j] = np.dot(inp[i, :21, j], volume)
+            result[i, 11, j] = np.dot(inp[i, :21, j], solvent_accessibility[:, 0])
+            result[i, 12, j] = np.dot(inp[i, :21, j], solvent_accessibility[:, 1])
+            result[i, 13, j] = np.dot(inp[i, :21, j], solvent_accessibility[:, 2])
 
     return result

@@ -48,7 +48,7 @@ def test(model, device, test_loader, loss_function, log=False, mode='q8'):
                     d_out = out[ind, :seq_len[ind], :].data.numpy().argmax(axis=1)
                     ac = accuracy(out[ind:ind + 1, :, :], target[ind:ind + 1, :], seq_len[ind:ind + 1])
                 a += ac
-                seq_str = ''.join([get_amino(x) for x in out[ind, :seq_len[ind], :].data.numpy().argmax(axis=1).tolist()])
+                seq_str = ''.join([get_amino(x) for x in data[ind, :seq_len[ind], :21].data.numpy().argmax(axis=1).tolist()])
                 pred = ''.join([decoder(x) for x in d_out.tolist()])
                 tar = ''.join([decoder(x) for x in d_target.tolist()])
 
