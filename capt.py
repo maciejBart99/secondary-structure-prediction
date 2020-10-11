@@ -17,9 +17,10 @@ data, target, seq_len = list(data.get_data()[1])[0]
 print('loaded explainable...')
 
 
-def explain_model(seq, class_num, target_pos, model_pth, window_size):
-    model = ModelWrapper(target_pos, class_num)
+def explain_model(seq, class_num, target_pos, model_pth, window_size, mode='q8'):
+    model = ModelWrapper(target_pos, class_num, mode)
     model.load_state_dict(torch.load(model_pth))
+    torch.autograd.set_detect_anomaly(True)
     model.eval()
     ig = IntegratedGradients(model)
     input_tensor = data[seq:seq + 1, :, :]
@@ -35,7 +36,7 @@ def explain_model(seq, class_num, target_pos, model_pth, window_size):
     # return name
     right_limit = min(seq_len[seq], target_pos + window_size + 1)
     left_limit = max(0, target_pos - window_size)
-    return attributions.data.numpy()[0, :, left_limit:right_limit]
+    return attributions.data.numpy()[0, :, left_limit:right_limit], right_limit, left_limit
 
 
 def get_details(id_seq, pos, window):

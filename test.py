@@ -36,6 +36,9 @@ def test(model, device, test_loader, loss_function, log=False, mode='q8'):
             out = model(data)
             test_loss += loss_function(out, target, seq_len).cpu().data.numpy()
             a = 0
+            np.save('output.npy', out.data.numpy())
+            print(data[1, :21, :seq_len[1]].data.numpy().argmax(axis=0))
+            print(data[1, :21, :seq_len[1]].data.numpy().argmax(axis=1))
             for ind in range(534):
                 if mode == 'q3':
                     decoder = get_structure_label_q3
@@ -48,7 +51,7 @@ def test(model, device, test_loader, loss_function, log=False, mode='q8'):
                     d_out = out[ind, :seq_len[ind], :].data.numpy().argmax(axis=1)
                     ac = accuracy(out[ind:ind + 1, :, :], target[ind:ind + 1, :], seq_len[ind:ind + 1])
                 a += ac
-                seq_str = ''.join([get_amino(x) for x in data[ind, :seq_len[ind], :21].data.numpy().argmax(axis=1).tolist()])
+                seq_str = ''.join([get_amino(x) for x in data[ind, :21, :seq_len[ind]].data.numpy().argmax(axis=0).tolist()])
                 pred = ''.join([decoder(x) for x in d_out.tolist()])
                 tar = ''.join([decoder(x) for x in d_target.tolist()])
 
@@ -58,15 +61,16 @@ def test(model, device, test_loader, loss_function, log=False, mode='q8'):
                     print(pred)
                     print(tar)
                     print(''.join(['=' if x else ' ' for x in np.equal(target[ind, :seq_len[ind]].data.numpy(),
-                                                                       out[ind, :seq_len[ind], :].data.numpy().argmax(axis=1)).tolist()
+                                                                       out[ind, :seq_len[ind], :].data.numpy().argmax(axis=0)).tolist()
                                    ]))
                     print('')
                 possibility = out[ind, :seq_len[ind], :].data.numpy()
                 if mode != 'q8':
-                    possibility[:, 0] = possibility[:, 3:6].sum(1)
-                    possibility[:, 1] = possibility[:, 1:3].sum(1)
-                    possibility[:, 2] = possibility[:, 6:].sum(1) + possibility[:, 0]
-                    possibility = possibility[:, :3]
+                    pos = np.zeros((possibility.shape[0], 3))
+                    pos[:, 0] = possibility[:, 3:6].sum(1)
+                    pos[:, 1] = possibility[:, 1:3].sum(1)
+                    pos[:, 2] = possibility[:, 6:].sum(1) + possibility[:, 0]
+                    possibility = pos
                 res.append({"id": ind, "acc": ac, "len": int(seq_len[ind]), 'seq': seq_str, 'pred': pred, 'target': tar,
                             "possibility":  possibility.tolist()})
             a /= target.shape[0]
