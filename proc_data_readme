@@ -1,4 +1,0 @@
-The sttructure of the file:
--each record is a sequence position
--in each record, we have the following fields:
-seq_ind, seq_pos, el, hyd, vol, pol, s0, s1, s2, el_m, hyd_m, vol_m, pol_m, s0_m, s1_m, s2_m, result_h, result_e, result_l, prediction_h, prediction_e, prediction_l
