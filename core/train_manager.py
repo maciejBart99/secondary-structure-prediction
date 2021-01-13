@@ -6,9 +6,8 @@ import torch
 
 from core.abstract_class_adapter import AbstractClassAdapter
 from core.abstract_output import AbstractOutput
-from core.test_manager import ModelDescriptor, TestManager, TestConfig
+from core.test_manager import ModelDescriptor, TestManager, TestConfig, CrossEntropy
 from core.loader import DataProvider
-from model import CrossEntropy
 
 
 class TrainResult:
@@ -43,6 +42,7 @@ class TrainManager:
         loss_function = CrossEntropy()
         optimizer = torch.optim.Adam(model.parameters(), weight_decay=0.01)
 
+        last_r = []
         train_loader, test_loader = self.data.get_data()
 
         for e in range(self.__config.epochs):
@@ -56,10 +56,12 @@ class TrainManager:
             )
             test_manager = TestManager(test_config, test_loader, self.class_adapter)
             test_result = test_manager.test()
+            last_r.append(test_result)
             if self.__config.output is not None:
                 self.__config.output.write(f'[{e:3d}/{self.__config.epochs:3d}]' +
                                            f' train_loss:{train_loss:.2f},' +
                                            f' test_loss:{test_result.loss:.2f}, acc:{test_result.acc:.3f}')
+        return last_r
 
     def __train_epoch(self, model, train_loader, loss_function, optimizer) -> float:
         model.train()

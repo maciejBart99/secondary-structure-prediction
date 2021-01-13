@@ -7,7 +7,16 @@ from core.amino_utils import ClassificationMode, AminoUtils
 from core.abstract_output import AbstractOutput
 from core.abstract_class_adapter import AbstractClassAdapter
 from core.loader import DataLoader
-from model import CrossEntropy
+
+
+class CrossEntropy:
+
+    def __call__(self, out, target, seq_len):
+        loss = 0
+        for o, t, l in zip(out, target, seq_len):
+            t = t.long()
+            loss += torch.nn.CrossEntropyLoss()(o[:l], t[:l])
+        return loss
 
 
 class ModelDescriptor:
@@ -57,13 +66,37 @@ class TestManager:
         self.device = torch.device("cuda" if self.use_cuda else "cpu")
         self.test_loader = test_loader
         self.class_adapter = class_adapter
+        self.model = self.__config.model.cls.to(self.device)
+        self.model.load_state_dict(torch.load(self.__config.model.path))
+        self.loss_function = CrossEntropy()
+        self.model.eval()
+
+    def get_sequence(self, seq) -> np.ndarray:
+        data, _, seq_len = list(self.test_loader)[0]
+        res = data[seq, :, :seq_len[0]]
+
+        return res
+
+    def get_sequence_target(self, seq) -> np.ndarray:
+        data, out, seq_len = list(self.test_loader)[0]
+        res = out[seq, :seq_len[seq]]
+
+        return res
+
+    def predict_one(self, seq, pos) -> np.ndarray:
+        data, _, seq_len = list(self.test_loader)[0]
+        with torch.no_grad():
+            out = self.model(data[seq:seq + 1, :, :]).data.numpy()
+        res = out[0, pos, :]
+
+        return res
+
+    def get_model(self):
+        return self.model
 
     def test(self):
-        model = self.__config.model.cls.to(self.device)
-        model.load_state_dict(torch.load(self.__config.model.path))
-        loss_function = CrossEntropy()
-
-        model.eval()
+        model = self.model
+        loss_function = self.loss_function
         total_accuracy = 0
         total_loss = 0
         result: List[TestResult.TestRecord] = []

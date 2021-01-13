@@ -2,7 +2,7 @@ import torch
 
 from core.abstract_model_wrapper import AbstractModelWrapper
 from core.amino_utils import ClassificationMode
-from model import Model
+from models.model import Model
 
 
 class ModelWrapper(Model, AbstractModelWrapper):
